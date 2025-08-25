@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VNC Console - {{ server_id }}</title>
+    <!-- <script src="/static/novnc/core/rfb.min.js"></script> -->
+    <style>
+        body { margin: 0; padding: 0; background: #333; color: white; font-family: Arial, sans-serif; }
+        #status { padding: 10px; background: #222; text-align: center; }
+        #screen { text-align: center; margin: 20px auto; }
+        canvas { border: 2px solid #555; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+    <div id="status">Connecting to {{ server_id }}...</div>
+    <div id="screen">
+        <canvas id="vnc-canvas" width="1024" height="768"></canvas>
+    </div>
+    <script>
+        const serverId = "{{ server_id }}";
+        const token = "{{ token }}";
+        const websocketUrl = `ws://${window.location.host}{{ websocket_url }}`;
+        let rfb;
+        let connected = false;
+        function connect() {
+            try {
+                rfb = new RFB({
+                    target: document.getElementById("vnc-canvas"),
+                    url: websocketUrl,
+                    credentials: { password: "" }
+                });
+                rfb.addEventListener("connect", () => {
+                    connected = true;
+                    document.getElementById("status").textContent = "Connected to " + serverId;
+                });
+                rfb.addEventListener("disconnect", (e) => {
+                    connected = false;
+                    if (e.detail.clean) {
+                        document.getElementById("status").textContent = "Disconnected from " + serverId;
+                    } else {
+                        document.getElementById("status").textContent = "Connection failed to " + serverId;
+                    }
+                });
+                rfb.addEventListener("credentialsrequired", () => {
+                    document.getElementById("status").textContent = "Authentication required for " + serverId;
+                });
+            } catch (err) {
+                console.error("VNC connection error:", err);
+                document.getElementById("status").textContent = "Connection error: " + err.message;
+            }
+        }
+        window.addEventListener("load", connect);
+        window.addEventListener("resize", () => {
+            if (rfb && connected) {
+                rfb.get_display().resize();
+            }
+        });
+    </script>
+</body>
+</html>
