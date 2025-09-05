@@ -1,0 +1,33 @@
+---
+- name: Install Haproxy
+  hosts: vnc_proxies
+  become: yes
+
+  tasks:
+    - name: Install haproxy package
+      apt:
+        name: haproxy
+        state: present
+        update_cache: yes
+
+    - name: Copy haproxy configuration file
+      copy:
+        src: ../haproxy/haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: "0644"
+        backup: yes
+      notify:
+        - Restart haproxy
+
+    - name: Enable and start haproxy service
+      systemd:
+        name: haproxy
+        enabled: yes
+        state: started
+  handlers:
+    - name: Restart haproxy
+      systemd:
+        name: haproxy
+        state: restarted
