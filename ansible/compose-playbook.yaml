@@ -4,7 +4,7 @@
   become: yes
 
   tasks:
-    # Bước 1: Cài đặt các gói phụ thuộc cần thiết
+    # Step 1: Install prerequisite packages
     - name: Install prerequisite packages
       apt:
         name:
@@ -14,27 +14,27 @@
         state: present
         update_cache: yes
 
-    # Bước 2: Tạo thư mục để lưu trữ GPG key của Docker
+    # Step 2: Create directory for Docker's GPG key
     - name: Create directory for apt keyrings
       file:
         path: /etc/apt/keyrings
         state: directory
         mode: "0755"
 
-    # Bước 3: Thêm GPG key chính thức của Docker
+    # Step 3: Add Docker's official GPG key
     - name: Add Docker's official GPG key
       shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
       args:
-        creates: /etc/apt/keyrings/docker.gpg # Lệnh này chỉ chạy nếu file key chưa tồn tại
+        creates: /etc/apt/keyrings/docker.gpg # This command only runs if the key file does not exist
 
-    # Bước 4: Thêm kho phần mềm (repository) của Docker
+    # Step 4: Add Docker's repository
     - name: Add Docker repository
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         filename: docker
 
-    # Bước 5: Cài đặt Docker Engine và Docker Compose Plugin
+    # Step 5: Install Docker Engine and Docker Compose Plugin
     - name: Install Docker Engine and Compose Plugin
       apt:
         name:
@@ -42,11 +42,11 @@
           - docker-ce-cli
           - containerd.io
           - docker-buildx-plugin
-          - docker-compose-plugin # Bây giờ apt đã có thể tìm thấy gói này
+          - docker-compose-plugin # apt can now find this package
         state: present
-        update_cache: yes # Cập nhật lại cache sau khi thêm repo mới
+        update_cache: yes # Update cache after adding the new repo
 
-    # Bước 6: Sao chép file docker-compose.yaml (giữ nguyên task của bạn)
+    # Step 6: Copy configuration files
     - name: Copy docker-compose.yaml
       copy:
         src: ../docker-compose.yaml
@@ -54,7 +54,7 @@
         owner: root
         group: root
         mode: "0644"
-
+    # step 7: Copy haproxy.cfg
     - name: Copy haproxy.cfg
       copy:
         src: ../haproxy/haproxy.cfg
@@ -62,7 +62,7 @@
         owner: root
         group: root
         mode: "0644"
-
+    # step 8: Copy keepalived config and scripts
     - name: Copy keepalived config
       copy:
         src: "../keepalived/{{ inventory_hostname }}.conf"
@@ -70,6 +70,7 @@
         owner: root
         group: root
         mode: "0644"
+
     - name: Copy keepalived scripts
       copy:
         src: ../keepalived/scripts/check_ha.sh
@@ -77,6 +78,8 @@
         owner: root
         group: root
         mode: "0755"
+
+    # Step 9: Start Docker Compose services
 
     - name: Run docker compose up -d
       shell: docker compose -f /root/python/docker-compose.yaml up -d
