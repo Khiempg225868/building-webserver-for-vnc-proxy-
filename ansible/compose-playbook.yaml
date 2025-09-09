@@ -1,0 +1,85 @@
+---
+- name: Install Docker and Docker Compose Plugin
+  hosts: vnc_proxies
+  become: yes
+
+  tasks:
+    # Bước 1: Cài đặt các gói phụ thuộc cần thiết
+    - name: Install prerequisite packages
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: yes
+
+    # Bước 2: Tạo thư mục để lưu trữ GPG key của Docker
+    - name: Create directory for apt keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    # Bước 3: Thêm GPG key chính thức của Docker
+    - name: Add Docker's official GPG key
+      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg # Lệnh này chỉ chạy nếu file key chưa tồn tại
+
+    # Bước 4: Thêm kho phần mềm (repository) của Docker
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    # Bước 5: Cài đặt Docker Engine và Docker Compose Plugin
+    - name: Install Docker Engine and Compose Plugin
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin # Bây giờ apt đã có thể tìm thấy gói này
+        state: present
+        update_cache: yes # Cập nhật lại cache sau khi thêm repo mới
+
+    # Bước 6: Sao chép file docker-compose.yaml (giữ nguyên task của bạn)
+    - name: Copy docker-compose.yaml
+      copy:
+        src: ../docker-compose.yaml
+        dest: /root/python/docker-compose.yaml
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy haproxy.cfg
+      copy:
+        src: ../haproxy/haproxy.cfg
+        dest: /root/python/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy keepalived config
+      copy:
+        src: "../keepalived/{{ inventory_hostname }}.conf"
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: "0644"
+    - name: Copy keepalived scripts
+      copy:
+        src: ../keepalived/scripts/check_ha.sh
+        dest: /root/python/keepalived/scripts/
+        owner: root
+        group: root
+        mode: "0755"
+        recurse: yes
+
+    - name: Run docker compose up -d
+      shell: docker compose -f /root/python/docker-compose.yaml up -d
+      args:
+        chdir: /root/python
