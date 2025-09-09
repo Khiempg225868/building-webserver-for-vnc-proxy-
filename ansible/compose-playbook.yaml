@@ -77,7 +77,6 @@
         owner: root
         group: root
         mode: "0755"
-        recurse: yes
 
     - name: Run docker compose up -d
       shell: docker compose -f /root/python/docker-compose.yaml up -d
