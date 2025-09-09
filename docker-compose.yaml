@@ -27,3 +27,13 @@ services:
     container_name: vnc_proxy_app
     restart: always
     network_mode: host
+    depends_on:
+      - mongo
+  mongo:
+    image: mongo:6.0
+    container_name: vnc_proxy_mongo
+    restart: always
+    network_mode: host
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - ./mongo/data:/data/db
