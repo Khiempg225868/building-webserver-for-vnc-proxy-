@@ -1,0 +1,31 @@
+ersion: "3.8"
+
+services:
+  haproxy:
+    image: haproxy:2.8
+    container_name: vnc_proxy_haproxy
+    restart: always
+    network_mode: host
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - app
+  keepalived:
+    image: osixia/keepalived:latest
+    container_name: vnc_proxy_keepalived
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+    environment:
+      - KEEPALIVED_CONFIG=${KEEPALIVED_CONFIG}
+    volumes:
+      - ./keepalived/scripts:/usr/local/etc/keepalived/scripts:ro
+      - /etc/keepalived/keepalived.conf:/usr/local/etc/keepalived/keepalived.conf:ro
+  app:
+    image: khiempg225868/vnc-proxy-v2:2.2.2
+    container_name: vnc_proxy_app
+    restart: always
+    network_mode: host
