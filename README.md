@@ -10,7 +10,7 @@
 ## Cấu trúc thư mục
 
 ```
-.
+.g
 ├── ansible/              # Chứa các Playbook để tự động hóa triển khai
 │   ├── compose-playbook.yaml
 │   └── inventory.yaml
@@ -151,7 +151,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"nodeId": "vm2"}' http://1
 Truy cập địa chỉ sau để sử dụng VNC qua web(thay serverID và token thực tế):
 
 ```
-http://10.10.10.244:8080/vnc_lite.html?host=10.10.10.244&port=6080&path=access%3FserverID%3Dvm2%26token%3D8f7d1e73-8df6-4c20-b3d4-018455a18e98
+http://10.10.10.244:8080/vnc_lite.html?host=10.10.10.244&port=6080&path=access%3FserverID%3Dvm2%26token%3Dxxxxxxxx-xxxx-4c20-b3d4-018455a18e98
 ```
 
 ## Minh họa kết quả
