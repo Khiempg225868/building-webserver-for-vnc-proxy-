@@ -1,9 +1,11 @@
 # building-webserver-for-vnc-proxy-
 
-server1: 10.10.10.231
-server2: 10.10.10.178
-server3: 10.10.10.19
-VIP ip : 10.10.10.244 (keepalived)
+## Thông tin các server
+
+- **Server 1:** `10.10.10.231`
+- **Server 2:** `10.10.10.178`
+- **Server 3:** `10.10.10.19`
+- **VIP (Keepalived):** `10.10.10.244`
 
 ## Cấu trúc thư mục
 
