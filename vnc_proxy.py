@@ -11,7 +11,7 @@ from websockify import ProxyRequestHandler, WebSocketProxy
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 
-# Thiết lập logging
+# Setup logging
 # logging.basicConfig(level=logging.DEBUG)
 
 VM_INFO = {
@@ -20,15 +20,15 @@ VM_INFO = {
     'vm3': {'host': '10.10.10.24', 'port': 5905},
 }
 
-TOKEN_EXPIRATION = 3600  # 1 giờ
+TOKEN_EXPIRATION = 3600  # 1 hour
 
 app = Flask(__name__)
 MONGO_URI = "mongodb://10.10.10.19:27017,10.10.10.231:27017,10.10.10.178:27017/?replicaSet=rs0"
 client = MongoClient(MONGO_URI)
 db = client["token_db"]
-tokens_collection = db["tokens"] # Đổi tên biến để tránh nhầm lẫn với dict TOKENS
+tokens_collection = db["tokens"] 
 
-# API để generate token
+# API to generate token
 @app.route('/gentoken', methods=['POST'])
 def gentoken():
     data = request.json
@@ -42,17 +42,16 @@ def gentoken():
     # Generate token UUID
     token = str(uuid.uuid4())
     
-    # Lưu token vào bộ nhớ với thời gian hết hạn
+    # Save token with expiration time
     expires_timestamp = time.time() + TOKEN_EXPIRATION
     
-    # Lưu token vào MongoDB
+    # Save token to MongoDB
     tokens_collection.insert_one({'token': token, 'vm_id': node_id, 'expires': int(expires_timestamp)})
     
-    # r.setex(f"TOKEN:{token}", TOKEN_EXPIRATION, json.dumps(token_data)) # <- ĐÃ XÓA
     return jsonify({'token': token})
 
 
-# Lớp handler tương tự NovaProxyRequestHandler, đơn giản hóa cho local
+
 class LocalVNCProxyRequestHandler(ProxyRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,7 +59,7 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
     print("websocket connected")
     def new_websocket_client(self):
         print("Handling new websocket client")
-        # Lấy token và serverID từ path query
+        # Get token and serverID from path query
         parsed = urlparse.urlparse(self.path)
         query = urlparse.parse_qs(parsed.query)
         token = query.get('token', [''])[0]
@@ -69,8 +68,8 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
         if not token or not server_id:
             raise Exception("Missing token or serverID")
 
-        # --- LOGIC XÁC THỰC TOKEN MỚI ---
-        # 1. Kiểm tra trong bộ nhớ trước
+        # --- TOKEN VALIDATION LOGIC ---
+        # Check token in the database
         token_info_db = tokens_collection.find_one({'token': token})
 
         if not token_info_db:
@@ -81,7 +80,7 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
                 'vm_id': token_info_db['vm_id'],
                 'expires': token_info_db['expires']
             }
-        # 3. Kiểm tra lần cuối
+        # Final check for validity and expiration
         if not token_info or time.time() > token_info['expires']:
             self.send_close()
             raise Exception("Invalid or expired token")
@@ -91,7 +90,7 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
            self.send_close()
            raise Exception("Token does not match serverID")
         
-        # Lấy host/port từ VM_INFO
+        # Get host/port from VM_INFO
         if server_id not in VM_INFO:
             raise Exception("Invalid serverID")
 
@@ -99,10 +98,10 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
         port = VM_INFO[server_id]['port']
         tsock = socket.create_connection((host, port))
 
-        # Hàm kiểm tra token hết hạn và đóng kết nối nếu cần
+        # Function to watch for token expiration and close connection if needed
         def token_expiry_watcher(handler, token, tsock):
             while True:
-                time.sleep(5) # Kiểm tra mỗi 5 giây
+                time.sleep(5) # Check every 5 seconds
                 
                 db_token = tokens_collection.find_one({'token': token})
                 if not db_token or db_token['expires'] < time.time():
@@ -115,11 +114,11 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
                     break
                 
 
-        # Khởi động thread kiểm tra token hết hạn
+        # Start the token expiration watcher thread
         watcher_thread = threading.Thread(target=token_expiry_watcher, args=(self, token, tsock), daemon=True)
         watcher_thread.start()
 
-        # Bắt đầu proxy
+        # Start the proxy
         try:
             self.do_proxy(tsock)
         except Exception:
@@ -128,7 +127,7 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
             raise
 
     def send_head(self):
-        # Tương tự Nova, xử lý directory nếu cần
+        # Similar to Nova, handle directory if needed
         path = self.translate_path(self.path)
         if os.path.isdir(path):
             parts = urlparse.urlsplit(self.path)
@@ -138,21 +137,20 @@ class LocalVNCProxyRequestHandler(ProxyRequestHandler):
                     return None
         return super().send_head()
 
-# Chạy server
+# Run server
 def run_proxy():
-    # Chạy websockify server trên port 6081, target là dynamic dựa trên handler
+    # Run websockify server on port 6081, target is dynamic based on the handler
     server = WebSocketProxy(
         RequestHandlerClass=LocalVNCProxyRequestHandler,
         listen_host='0.0.0.0',
         listen_port=6081,
-        target_host=None,  # Để handler tự xử lý
+        target_host=None,  # Let the handler manage it
         target_port=None,
     )
     server.start_server()
 
 if __name__ == '__main__':
-    # Chạy Flask cho API trên port 5001
+    # Run Flask API on port 5001
     threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5001}).start()
     
-    # Chạy proxy WebSocket
-    run_proxy()
+    # Run WebSocket
