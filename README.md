@@ -1,84 +1,80 @@
 # building-webserver-for-vnc-proxy-
 
-## Giới thiệu
+server1: 10.10.10.231
+server2: 10.10.10.178
+server3: 10.10.10.19
+VIP ip : 10.10.10.244 (keepalived)
 
-Dự án này cung cấp một WebSocket proxy cho phép truy cập VNC của máy ảo được tạo bằng virtual machine manager qua trình duyệt web (tương thích với noVNC). Proxy xác thực truy cập bằng token và chuyển tiếp dữ liệu giữa client và VNC server.
-
-## Yêu cầu
-
-- Python 3.8+
-- Các thư viện: `websockify`, `flask`, `threading`, v.v.
-- Máy ảo phải bật VNC server (mở port 5900, 5901...)
-
-## Cài đặt thư viện (nếu chưa có)
-
-```sh
-pip install flask websockify
-```
-
-## Hướng dẫn chạy
-
-### 1. Khởi động proxy và API
-
-```sh
-python vnc_proxy.py
-```
-
-- Proxy WebSocket sẽ chạy trên cổng `6080`.
-- API Flask sẽ chạy trên cổng `5000`.
-
-### 2. Lấy token truy cập cho máy ảo
-
-Truy cập trình duyệt hoặc dùng curl:
+## Cấu trúc thư mục
 
 ```
-http://localhost:5000/gentoken?nodeId=vm1
+.
+├── ansible/              # Chứa các Playbook để tự động hóa triển khai
+│   ├── compose-playbook.yaml
+│   └── inventory.yaml
+├── haproxy/              # Cấu hình cho HAProxy
+│   └── haproxy.cfg
+├── keepalived/           # Cấu hình và script cho Keepalived
+│   ├── scripts/
+│   │   └── check_ha.sh
+│   ├── 10.10.10.19.conf
+│   ├── 10.10.10.178.conf
+│   ├── 10.10.10.231.conf
+│   └── ...
+├── noVNC/                # Thư mục chứa mã nguồn noVNC
+│   └── ...
+├── requirements.txt      # Thư viện Python yêu cầu cho ứng dụng
+├── vnc_proxy.py          # Mã nguồn ứng dụng Python
+├── Dockerfile            # Dockerfile của dự án
+├── docker-compose.yaml   # Docker compose
+└── README.md             # file hướng dẫn thực hiện
 ```
 
-- Thay `vm1` bằng ID máy ảo bạn muốn truy cập.
-- Kết quả trả về:
-  ```json
-  { "token": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }
+## Build Docker Image
+
+1. **Build Docker image**
+
+```bash
+docker build -t khiempg225868/vnc-proxy-v2:2.2.2 .
+```
+
+2. **Push Docker image lên Docker Hub**
+
+```bash
+docker push khiempg225868/vnc-proxy-v2:2.2.2
+```
+
+3. **Chạy Ansible Playbook để triển khai**
+
+- Sử dụng lệnh sau để chạy playbook để triển khai docker và docker compose, file cấu hình haproxy và cấu hình keepalived cho server:
+  ```bash
+  ansible-playbook -i ansible/inventory.yaml ansible/compose-playbook.yaml
   ```
 
-### 3. Chạy noVNC để truy cập VNC qua web
+## Chạy Ứng dụng
 
-- Nếu chưa có noVNC, hãy clone về bằng lệnh:
+1. **Tạo mới token bằng lệnh curl**
 
-  ```sh
-  git clone https://github.com/novnc/noVNC.git
-  ```
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"nodeId": "vm2"}' http://10.10.10.244:5000/gentoken
+```
 
-- Di chuyển vào thư mục chứa `vnc.html` của noVNC:
-  ```sh
-  cd noVNC
-  python3 -m http.server 8080
-  ```
-- Mở trình duyệt truy cập:
-  ```
-  http://localhost:8080/vnc.html
-  ```
-- Trong phần **Settings** của noVNC, nhập:
-  - **Host:** `localhost`
-  - **Port:** `6080`
-  - **Path:**
-    ```
-    access?serverID=vm1&token=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    ```
-    (thay đúng serverID và token vừa lấy)
+**Ví dụ kết quả trả về:**
 
-### 4. Kết nối và sử dụng
+```json
+{
+  "token": "8f7d1e73-8df6-4c20-b3d4-018455a18e98"
+}
+```
 
-- Nhấn **Connect** trên noVNC để truy cập console VNC của máy ảo.
+2. **Truy cập ứng dụng qua trình duyệt**
 
-## Lưu ý
+Truy cập địa chỉ sau để sử dụng VNC qua web(thay serverID và token thực tế):
 
-- Nếu thay đổi code hoặc restart proxy, hãy lấy lại token mới.
-- Đảm bảo VNC server của máy ảo đang chạy và mở port.
-- Có thể chỉnh sửa file `.gitignore` để loại trừ các file không muốn commit.
+```
+http://10.10.10.244:8080/vnc_lite.html?host=10.10.10.244&port=6080&path=access%3FserverID%3Dvm2%26token%3D8f7d1e73-8df6-4c20-b3d4-018455a18e98
+```
 
-## Debug
+## Minh họa kết quả
 
-- Kiểm tra log terminal nơi chạy proxy để xem thông báo xác thực token, kết nối VNC, lỗi, v.v.
-- Nếu gặp lỗi "Invalid token", hãy lấy lại token mới và thử lại.
-  **Chúc bạn thành công!**
+![Kết quả triển khai VNC Proxy](img/image.png)
