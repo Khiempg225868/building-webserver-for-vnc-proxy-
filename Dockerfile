@@ -14,4 +14,4 @@ EXPOSE 5001
 EXPOSE 6081
 EXPOSE 8081
 
-CMD ["/bin/sh", "-c", "(cd /app/noVNC && python3 -m http.server 8081) & python3 /app/vnc_proxy.py"]```
+CMD ["/bin/sh", "-c", "(cd /app/noVNC && python3 -m http.server 8081) & python3 /app/vnc_proxy.py"]
