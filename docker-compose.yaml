@@ -1,4 +1,4 @@
-ersion: "3.8"
+version: "3.8"
 
 services:
   haproxy:
@@ -19,8 +19,6 @@ services:
       - NET_ADMIN
       - NET_BROADCAST
       - NET_RAW
-    environment:
-      - KEEPALIVED_CONFIG=${KEEPALIVED_CONFIG}
     volumes:
       - ./keepalived/scripts:/usr/local/etc/keepalived/scripts:ro
       - /etc/keepalived/keepalived.conf:/usr/local/etc/keepalived/keepalived.conf:ro
